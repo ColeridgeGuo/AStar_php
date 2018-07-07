@@ -26,7 +26,7 @@ class Node {
 			$this->h = sqrt (pow ($this->latitude - $goal->latitude,2)
 				 +   pow ($this->longitude - $goal->longitude,2));
 		}
-		return h;
+		return $this->h;
 	}
 
 	function toString () {
@@ -37,6 +37,3 @@ class Node {
 		return $result;
 	}
 }
-
-
-?>

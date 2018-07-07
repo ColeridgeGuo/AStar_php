@@ -11,17 +11,17 @@ require ('astar_edge.php');
 function removeMin ($arr){
 	$minNode = $arr[0];
 	$i = 0;
-	$mini = 0;
+	$min = 0;
 
 	foreach ($arr as $node) {
     		if ($node->f < $minNode->f) {
 			$minNode = $node;
-			$mini = $i;
+			$min = $i;
 		}
 		$i++;
 	}
 	//REMOVE minimum node
-	unset ($arr[$mini]);
+	unset ($arr[$min]);
 	return $minNode;
 }
 
@@ -41,10 +41,12 @@ function AStarSearch (Node $source, Node $goal){
 	$closedList = array();  //list of nodes visited
 	$openList = array();    //list of unresolved (open) nodes
 
-	array_push($openList, $source);
+	//array_push($openList, $source);
+	$openList["$source->nodeID"] = $source;
 
 	while ( sizeof($openList) > 0 ) {
 		$pq = removeMin($openList);
+		echo "pq is $pq->nodeID.<br>";
 		
 		if ($pq->nodeID == $goal->nodeID){
 			break;
@@ -52,28 +54,34 @@ function AStarSearch (Node $source, Node $goal){
 		
 		//check every successor of pq
 		foreach ($pq->adjacencies as $edge){
-			echo "Node $pq->nodeID has edge";
+			echo "Node $pq->nodeID has edge.<br>";
 
 			$successor = $edge->getOther($pq);
+			echo "successor = $successor->nodeID.<br>";
+
       // Calculate g, f
       $temp_g = $pq->g + $edge->cost;
+      echo "temp_g = $temp_g.<br>";
       $temp_f = $temp_g + $successor->getH($goal);
+      echo "temp_f = $temp_f.<br>";
 
-      if (!is_null($openList["$successor"])) {//two routes to this node exist
+      if (in_array("$successor->nodeID",$openList)) {//two routes to this node exist
         $successor->parent = $pq;
         $successor->g = $temp_g;
         $successor->f = $temp_f;
         echo "New route to $successor is via $pq.<br>";
       }
-      else if (is_null($closedList["$successor"])) {
+      else if (!in_array("$successor->nodeID",$closedList)) {
         $successor->parent = $pq;
         $successor->g = $temp_g;
         $successor->f = $temp_f;
-        echo "OpenList add $successor @ $successor->f";
-        array_push($openList, $successor);
+        echo "OpenList add $successor @ $successor->f.<br>";
+        //array_push($openList, $successor);
+        $openList["$successor->nodeID"] = $successor;
       }
 		}
-		array_push ($closedList, $pq);
+		//array_push ($closedList, $pq);
+		$closedList["$pq->nodeID"] = $pq;
 	}
 
 }
@@ -89,23 +97,23 @@ $e = new Node("E",8,7);
 $f = new Node("F",12,4);
 $g = new Node("G", 12, 9);
 
-$ab = new Edge($a,$b,6);
-$ac = new Edge($a,$c,4);
-$bd = new Edge($b,$d,3.6056);
-$be = new Edge($b,$e,4);
-$cd = new Edge($c,$d,4.1231);
-$de = new Edge($d,$e,2.2361);
-$ef = new Edge($e,$f,5);
-$cg = new Edge($c,$g,10.1980);
-$fg = new Edge($f,$g,5);
+$ab = new Edge($a,$b);
+$ac = new Edge($a,$c);
+$bd = new Edge($b,$d);
+$be = new Edge($b,$e);
+$cd = new Edge($c,$d);
+$de = new Edge($d,$e);
+$ef = new Edge($e,$f);
+$cg = new Edge($c,$g);
+$fg = new Edge($f,$g);
 
 array_push($a->adjacencies, $ab,$ac);
 array_push($b->adjacencies, $ab,$bd,$be);
-array_push($c->adjacencies, $ac,$cd);
+array_push($c->adjacencies, $ac,$cd,$cg);
 array_push($d->adjacencies, $bd,$cd,$de);
 array_push($e->adjacencies, $de,$be,$ef);
-array_push($f->adjacencies, $ef);
-
+array_push($f->adjacencies, $ef,$fg);
+array_push($g->adjacencies, $cg,$fg);
 
 print_r ($a->toString());
 echo "<br>";
