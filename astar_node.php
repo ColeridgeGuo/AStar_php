@@ -23,20 +23,16 @@ class Node {
 	//get the heuristic cost to the goal node
 	function getH ($goal){
 		if ($this->h < 0) {
-			$this->h = sqrt (pow ($this->latitude - $goal->latitude,2)
-				 +   pow ($this->longitude - $goal->longitude,2));
+			$this->h = sqrt(pow($this->latitude - $goal->latitude,2)
+				 + pow($this->longitude - $goal->longitude,2));
 		}
-		return h;
+		return $this->h;
 	}
 
 	function toString () {
-		$result = "llllll[".$this->nodeID;
-		$result = $result . "\n<br/>$this->nodeID @$this->latitude,$this->longitude";
-		$result = $result."]\n<br/>";
+		$result = "$this->nodeID ($this->latitude,$this->longitude)";
+		$result = $result . "<br>";
 
 		return $result;
 	}
 }
-
-
-?>
