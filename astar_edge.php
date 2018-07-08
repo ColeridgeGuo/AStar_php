@@ -6,29 +6,29 @@ class Edge {
 	public $endPointA;  //node at one end
 	public $endPointB;  //node at the other end
 
-  //todo: take out the cost cuz it will be updated in the database
-  //todo: add the extra cost factor
-	function __construct ($a, $b, $cost) {
-		$this->endPointA = $a;
-		$this->endPointB = $b;
+  //todo: cost will be updated in the database
+	function __construct ($a, $b)
+  {
+    $this->endPointA = $a;
+    $this->endPointB = $b;
 
-		$this->cost = $cost;
+    if ($a->nodeID == $b->nodeID) {
+      $this->cost = 0;
+    }
+    else { //since edges are, by our definition straight, the cost is the euclidean + hazards
+      $this->cost = sqrt(pow($a->latitude - $b->latitude, 2)
+        + pow($a->longitude - $b->longitude, 2));
+      //$this->cost += 0.55;  //todo: some hazard value TBD
+    }
 	}
 
-	function setCost($cost){
-	  $this->cost = $cost;
-  }
-
 	function getOther($node){
-	  if ($node->nodeID == $endPoinA->nodeID) {
-	    return $endPointB;
+	  if ($node->nodeID == $this->endPointA->nodeID) {
+	    return $this->endPointB;
     }
-    else if ($node->nodeID == $endPointB->nodeID) {
-	    return $endPoinA;
+    if ($node->nodeID == $this->endPointB->nodeID) {
+	    return $this->endPointA;
     }
-    else {
-	    echo "None of the endpoints match.";
-	    return null;
-    }
+    return null;
   }
 }
