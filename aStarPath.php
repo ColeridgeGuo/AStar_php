@@ -1,14 +1,11 @@
 <?php
-//Implementation of A* pathfinding algorithm
-//Summer 2018
+// Implementation of A* pathfinding algorithm
+// Summer 2018
 
 require ('astar_node.php');
 require ('astar_edge.php');
 
-//returns the minimum valued (F) node key from the array
-// you can't wrap 'unset()' in a user-defined function 
-// because it only unsets the reference not the actual copy
-
+// Removes the minimum valued (F) node from the array
 function removeMin (&$arr){
 	$minNode = reset($arr);
 	$minKey = $minNode->nodeID;
@@ -22,7 +19,7 @@ function removeMin (&$arr){
 	return $minNode;
 }
 
-//follow path from end, via parent's back to start
+// Follow path from end, via parent's back to start
 function printPath ($target) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
@@ -36,7 +33,7 @@ function printPath ($target) {
   echo "<br>";
 }
 
-//main implementation of the pathfinding algorithm
+// Main implementation of the pathfinding algorithm
 function AStarSearch (Node $source, Node $goal){
 	$closedList = array();  //list of nodes visited
 	$openList = array();    //list of unresolved (open) nodes
