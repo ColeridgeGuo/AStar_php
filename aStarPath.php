@@ -9,15 +9,17 @@ require ('astar_edge.php');
 // you can't wrap 'unset()' in a user-defined function 
 // because it only unsets the reference not the actual copy
 
-function returnMinKey ($arr){
+function removeMin (&$arr){
 	$minNode = reset($arr);
 	$minKey = $minNode->nodeID;
 	foreach ($arr as $nodeID => $node) {
     if ($node->f < $minNode->f) {
 			$minKey = $nodeID;
+			$minNode = $node;
 		}
 	}
-	return $minKey;
+	unset($arr[$minKey]);
+	return $minNode;
 }
 
 //follow path from end, via parent's back to start
@@ -42,10 +44,7 @@ function AStarSearch (Node $source, Node $goal){
 	$openList[$source->nodeID] = $source;
 
 	while ( sizeof($openList) > 0 ) {
-		$minKey = returnMinKey($openList);
-		
-		$pq = $openList[$minKey];
-		unset ($openList[$minKey]);
+		$pq = removeMin($openList);
 		//echo "pq = $pq->nodeID.<br><br>";
 		
 		if ($pq->nodeID == $goal->nodeID){
