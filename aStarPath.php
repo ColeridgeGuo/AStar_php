@@ -20,7 +20,7 @@ function removeMin (array &$arr){
 }
 
 // Follow path from end, via parent's back to start
-function printPath (Node $target) {
+function printPath (Node $target, $linkID) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
     array_push($path, $node);
@@ -31,6 +31,40 @@ function printPath (Node $target) {
 		echo "$node->nodeID ";
 	}
   echo "<br>";
+  
+  // Put the path in the Paths table in db
+  $userID = $_POST["userID"];
+  $sqlClearPath = "DELETE FROM Paths WHERE userID = '$userID'";
+  if (mysqli_query($linkID, $sqlClearPath)) {
+    echo "Old paths deleted successfully.<br>";
+  } else {
+    echo "Error deleting old paths: " . mysqli_error($linkID). "<br>";
+  }
+  $Visited = 0;
+  $prev = null;
+  foreach ($pathReverse as $node) {
+    $edgeID = 0;
+    $sqlFindEdge = "SELECT edgeID 
+                    FROM Edges 
+                    WHERE (NodeA='$prev->nodeID' AND NodeB='$node->nodeID')
+                    OR (NodeA='$node->nodeID' AND NodeB='$prev->nodeID')";
+    $findEdge = mysqli_query($linkID, $sqlFindEdge);
+    if (mysqli_num_rows($findEdge) > 0) {
+      $edge = mysqli_fetch_assoc($findEdge);
+      $edgeID = $edge['edgeID'];
+    }
+    else {
+      echo "No such edge found.<br>";
+    }
+    $prev = $node;
+    $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
+                      VALUES ($userID, $node->nodeID, $edgeID, $Visited)";
+    if (mysqli_query($linkID, $sqlInsertPath)) {
+      echo "New paths for user $userID inserted successfully.<br>";
+    } else {
+        echo "Error inserting new paths: " . mysqli_error($linkID) . "<br>";
+    }
+  }
 }
 
 // Main implementation of the pathfinding algorithm
@@ -85,11 +119,7 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, &$allNodes){
   }
 }
 
-///////////////////////////////////////////////////////////
-/// todo: Move the following to findPath.php once it works
-///////////////////////////////////////////////////////////
-
-// Builds the adjacency array for the node
+// For each edge that the node is attached to, build the adjacency array
 function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
   // Select all the edges that have $node as nodeA
   $sqlA_Edges = "SELECT edgeID, NodeB, Cost
@@ -214,7 +244,7 @@ if (!$linkID) {
   die("Connection failed: " . mysqli_connect_error() . "<br>");
 }
 echo "Connected successfully.<br>";
-echo "<a href='getStartAndTarget.php'>Return to homepage.<br><br></a>";
+echo "<a href='findPath.php'>Return to homepage.<br><br></a>";
 
 $start = createStart($linkID);
 $target = createTarget($linkID);
@@ -226,6 +256,6 @@ $allNodes[$target->nodeID] = $target;
 
 AStarSearch ($start, $target, $linkID, $allNodes);
 echo "<br>";
-printPath($target);
+printPath($target, $linkID);
 echo "Cost: " . $target->g . "<br>";
 mysqli_close($linkID);
