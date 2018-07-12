@@ -5,6 +5,8 @@
 require ('astar_node.php');
 require ('astar_edge.php');
 
+header('Content-type:application/json');
+
 // Removes the minimum valued (F) node from the array
 function removeMin (array &$arr){
   $minNode = reset($arr);
@@ -26,25 +28,31 @@ function printPath (Node $target, $linkID) {
     array_push($path, $node);
   }
   $pathReverse = array_reverse($path);
-	echo "Path: ";
-	foreach ($pathReverse as $node) {
-		echo "$node->nodeID ";
-	}
-  echo "<br>";
+  
+//	$jsonPath = array();
+//	foreach ($pathReverse as $node) {
+//		array_push($jsonPath, $node->nodeID);
+//	}
+//  echo json_encode($jsonPath);
   
   // Put the path in the Paths table in db
   $userID = $_POST["userID"];
   $sqlClearPath = "DELETE FROM Paths WHERE userID = '$userID'";
   if (mysqli_query($linkID, $sqlClearPath)) {
-    echo "Old paths deleted successfully.<br>";
+    $jsonDeletePath = ["status"=>"200", "statusMessage"=>"Old paths deleted successfully."];
+    echo json_encode($jsonDeletePath);
   } else {
-    echo "Error deleting old paths: " . mysqli_error($linkID). "<br>";
+    $jsonDeletePath = ["status"=>"500", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
+    echo json_encode($jsonDeletePath);
   }
-  $Visited = 0;
+  $visited = 0;
   $prev = null;
+  $jsonPath = array();
+  $i = 0;
   foreach ($pathReverse as $node) {
+    //echo json_encode(["node"=>"$node->nodeID"]);
     $edgeID = 0;
-    $sqlFindEdge = "SELECT edgeID 
+    $sqlFindEdge = "SELECT *
                     FROM Edges 
                     WHERE (NodeA='$prev->nodeID' AND NodeB='$node->nodeID')
                     OR (NodeA='$node->nodeID' AND NodeB='$prev->nodeID')";
@@ -52,19 +60,44 @@ function printPath (Node $target, $linkID) {
     if (mysqli_num_rows($findEdge) > 0) {
       $edge = mysqli_fetch_assoc($findEdge);
       $edgeID = $edge['edgeID'];
+      //extract($edge);
     }
     else {
-      echo "No such edge found.<br>";
+      $jsonEdgeFound = ["status"=>"500", "statusMessage"=>"No such edge found."];
+      echo json_encode($jsonEdgeFound);
+    }
+    $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
+                      VALUES ($userID, $node->nodeID, $edgeID, $visited)";
+    if (mysqli_query($linkID, $sqlInsertPath)) {
+      $jsonInsertPath = ["status"=>"200", "statusMessage"=>"New paths for user $userID inserted successfully."];
+      echo json_encode($jsonInsertPath);
+    } 
+    else {
+      $jsonInsertPath = ["status"=>"500", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
+      echo json_encode($jsonInsertPath);
     }
     $prev = $node;
-    $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
-                      VALUES ($userID, $node->nodeID, $edgeID, $Visited)";
-    if (mysqli_query($linkID, $sqlInsertPath)) {
-      echo "New paths for user $userID inserted successfully.<br>";
-    } else {
-        echo "Error inserting new paths: " . mysqli_error($linkID) . "<br>";
+    
+    // Convert path into an array of JSON string 
+    if ($i > 0) {//exclude the starting point
+      $sqlNodeAttributes = mysqli_query($linkID, "SELECT *
+                                                  FROM NodeAttributes
+                                                  WHERE nodeID='$node->nodeID'");
+      $nodeAttributes = mysqli_fetch_assoc($sqlNodeAttributes);
+      //extract($nodeAttributes);
+      $sqlEdgeAttributes = mysqli_query($linkID, "SELECT *
+                                                  FROM EdgeAttributes
+                                                  WHERE edgeID = '$edgeID'");
+      $edgeAttributes = mysqli_fetch_assoc($sqlEdgeAttributes);
+      //extract($edgeAttributes);
+      
+      $step = array("Node Attributes"=>$nodeAttributes, 
+                    "Edge Attributes"=>$edgeAttributes);
+      array_push($jsonPath, $step);
     }
+    $i++;
   }
+  echo json_encode($jsonPath);
 }
 
 // Main implementation of the pathfinding algorithm
@@ -112,10 +145,8 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, &$allNodes){
         //echo "OpenList add node $successor->nodeID @ $successor->f.<br>";
         $openList[$successor->nodeID] = $successor;
       }
-      //echo "---------------------- for loop ------------------------<br>";
 		}
 		$closedList[$pq->nodeID] = $pq;
-    //echo "---------------------- while loop ---------------------<br><br>";
   }
 }
 
@@ -128,10 +159,7 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
   $A_Edges = mysqli_query($linkID, $sqlA_Edges);
   $numA_Edges = mysqli_num_rows($A_Edges);
   
-  if ($numA_Edges <= 0) {
-    echo "The node $node->nodeID is not connected to any edge as nodeA.<br>";
-  }
-  else {
+  if ($numA_Edges > 0) {
     for ($i=0; $i < $numA_Edges; $i++) {
       // For each edge, get the info of the other endpoint
       $A_Edge = mysqli_fetch_assoc($A_Edges);
@@ -162,10 +190,7 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
   $B_Edges = mysqli_query($linkID, $sqlB_Edges);
   $numB_Edges = mysqli_num_rows($B_Edges);
   
-  if ($numB_Edges <= 0) {
-    echo "The node $node->nodeID is not connected to any edge as nodeB.<br>";
-  }
-  else {
+  if ($numB_Edges > 0) {
     for ($i=0; $i < $numB_Edges; $i++) {
       // For each edge, get the info of the other endpoint
       $B_Edge = mysqli_fetch_assoc($B_Edges);
@@ -184,8 +209,6 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
       //Create an Edge and put it on the adjacencies of $node
       $newEdge = new Edge($node, $newNode, $Cost);
       array_push($node->adjacencies, $newEdge);
-      
-      //echo "Edge {$newEdge->endPointA->nodeID} -> {$newEdge->endPointB->nodeID} @$newEdge->cost<br>";
     }
   }
 }
@@ -193,12 +216,6 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
 // Creates a starting node with lat/long
 // todo: modify this using nearest-edge algorithm to find a starting point
 function createStart ($linkID) {
-//  todo: to be replaced with lat/lon
-//  $lat = $_POST['startLat'];
-//  $lon = $_POST['startLon'];
-//  $sqlStart = "SELECT nodeID
-//               FROM Nodes
-//               WHERE Latitude='$lat' AND Longitude='$lon'";
   $startID = $_POST['startID'];
   $sqlStart = "SELECT Latitude, Longitude
                FROM Nodes
@@ -243,8 +260,8 @@ $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
   die("Connection failed: " . mysqli_connect_error() . "<br>");
 }
-echo "Connected successfully.<br>";
-echo "<a href='findPath.php'>Return to homepage.<br><br></a>";
+$jsonConnected = ["status"=>"200", "statusMessage"=>"Connected successfully!"];
+echo json_encode($jsonConnected);
 
 $start = createStart($linkID);
 $target = createTarget($linkID);
@@ -255,7 +272,7 @@ $allNodes[$start->nodeID] = $start;
 $allNodes[$target->nodeID] = $target;
 
 AStarSearch ($start, $target, $linkID, $allNodes);
-echo "<br>";
 printPath($target, $linkID);
-echo "Cost: " . $target->g . "<br>";
+$jsonCost = ["cost"=>"$target->g"];
+echo json_encode($jsonCost);
 mysqli_close($linkID);
