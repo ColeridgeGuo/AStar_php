@@ -22,35 +22,30 @@ function removeMin (array &$arr){
 }
 
 // Follow path from end, via parent's back to start
-function printPath (Node $target, $linkID) {
+function printPath (Node $target, $linkID, $jsonMessage) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
     array_push($path, $node);
   }
   $pathReverse = array_reverse($path);
   
-//	$jsonPath = array();
-//	foreach ($pathReverse as $node) {
-//		array_push($jsonPath, $node->nodeID);
-//	}
-//  echo json_encode($jsonPath);
+  // The JSON string that has the status message and the path details
+  //$jsonMessage = array();
+  //$jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
+  $jsonPath = array();
   
-  // Put the path in the Paths table in db
+  // Put the path in the Paths table in db and output JSON
   $userID = $_POST["userID"];
   $sqlClearPath = "DELETE FROM Paths WHERE userID = '$userID'";
-  if (mysqli_query($linkID, $sqlClearPath)) {
-    $jsonDeletePath = ["status"=>"200", "statusMessage"=>"Old paths deleted successfully."];
-    echo json_encode($jsonDeletePath);
-  } else {
-    $jsonDeletePath = ["status"=>"500", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
-    echo json_encode($jsonDeletePath);
+  if (!mysqli_query($linkID, $sqlClearPath)) {
+    $jsonMessage["status"] = ["status"=>"500", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
   }
+  
   $visited = 0;
   $prev = null;
-  $jsonPath = array();
   $i = 0;
+  
   foreach ($pathReverse as $node) {
-    //echo json_encode(["node"=>"$node->nodeID"]);
     $edgeID = 0;
     $sqlFindEdge = "SELECT *
                     FROM Edges 
@@ -60,48 +55,48 @@ function printPath (Node $target, $linkID) {
     if (mysqli_num_rows($findEdge) > 0) {
       $edge = mysqli_fetch_assoc($findEdge);
       $edgeID = $edge['edgeID'];
-      //extract($edge);
     }
-    else {
-      $jsonEdgeFound = ["status"=>"500", "statusMessage"=>"No such edge found."];
-      echo json_encode($jsonEdgeFound);
-    }
+    
     $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
                       VALUES ($userID, $node->nodeID, $edgeID, $visited)";
-    if (mysqli_query($linkID, $sqlInsertPath)) {
-      $jsonInsertPath = ["status"=>"200", "statusMessage"=>"New paths for user $userID inserted successfully."];
-      echo json_encode($jsonInsertPath);
-    } 
-    else {
-      $jsonInsertPath = ["status"=>"500", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
-      echo json_encode($jsonInsertPath);
+    if (!mysqli_query($linkID, $sqlInsertPath)) {
+      $jsonMessage["status"] = ["status"=>"500", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
     }
     $prev = $node;
     
     // Convert path into an array of JSON string 
     if ($i > 0) {//exclude the starting point
-      $sqlNodeAttributes = mysqli_query($linkID, "SELECT *
+      $sqlNodeInfo = mysqli_query($linkID, "SELECT nodeID, Latitude, Longitude, Description
+                                            FROM Nodes
+                                            WHERE nodeID='$node->nodeID'");
+      $nodeInfo = mysqli_fetch_assoc($sqlNodeInfo);
+      //extract($nodeInfo);
+      
+      $sqlNodeAttributes = mysqli_query($linkID, "SELECT Location, NodeType, Door Swipe, OpenDirection, DoorLocation
                                                   FROM NodeAttributes
                                                   WHERE nodeID='$node->nodeID'");
       $nodeAttributes = mysqli_fetch_assoc($sqlNodeAttributes);
       //extract($nodeAttributes);
+      $nodeInfo = array_merge($nodeInfo, $nodeAttributes);
+      
       $sqlEdgeAttributes = mysqli_query($linkID, "SELECT *
                                                   FROM EdgeAttributes
                                                   WHERE edgeID = '$edgeID'");
       $edgeAttributes = mysqli_fetch_assoc($sqlEdgeAttributes);
       //extract($edgeAttributes);
       
-      $step = array("Node Attributes"=>$nodeAttributes, 
-                    "Edge Attributes"=>$edgeAttributes);
+      $step = array("NodeInformation"=>$nodeInfo, 
+                    "EdgeInformation"=>$edgeAttributes);
       array_push($jsonPath, $step);
     }
     $i++;
   }
-  echo json_encode($jsonPath);
+  $jsonMessage["path"] = $jsonPath;
+  return json_encode($jsonMessage);
 }
 
 // Main implementation of the pathfinding algorithm
-function AStarSearch (Node &$source, Node &$goal, $linkID, &$allNodes){
+function AStarSearch (Node &$source, Node &$goal, $linkID){
 	$closedList = array();  //list of nodes visited
 	$openList = array();    //list of unresolved (open) nodes
 
@@ -109,7 +104,7 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, &$allNodes){
 
   while ( sizeof($openList) > 0 ) {
 	  $pq = removeMin($openList);
-    buildAdjacencies($pq, $allNodes, $linkID);
+    buildAdjacencies($pq, $linkID);
     
     
     if ($pq->nodeID == $goal->nodeID){
@@ -151,7 +146,7 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, &$allNodes){
 }
 
 // For each edge that the node is attached to, build the adjacency array
-function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
+function buildAdjacencies (Node &$node, $linkID) {
   // Select all the edges that have $node as nodeA
   $sqlA_Edges = "SELECT edgeID, NodeB, Cost
                  FROM Edges
@@ -170,10 +165,8 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
       $nodeBInfo = mysqli_query($linkID, $sqlNodeB);
       $nodeB = mysqli_fetch_assoc($nodeBInfo);
       extract($nodeB);
-
-      // Create a Node and put it on the allNodes array and an Edge
+      
       $newNode = new Node($NodeB, $Latitude, $Longitude);
-      $allNodes['$nodeB'] = $newNode;
 
       //Create an Edge and put it on the adjacencies of $node
       $newEdge = new Edge($node, $newNode, $Cost);
@@ -201,10 +194,8 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
       $nodeAInfo = mysqli_query($linkID, $sqlNodeA);
       $nodeA = mysqli_fetch_assoc($nodeAInfo);
       extract($nodeA);
-
-      // Create a Node and put it on the allNodes array and an Edge
+      
       $newNode = new Node($NodeA, $Latitude, $Longitude);
-      $allNodes['$nodeA'] = $newNode;
 
       //Create an Edge and put it on the adjacencies of $node
       $newEdge = new Edge($node, $newNode, $Cost);
@@ -215,34 +206,44 @@ function buildAdjacencies (Node &$node, &$allNodes, $linkID) {
 
 // Creates a starting node with lat/long
 // todo: modify this using nearest-edge algorithm to find a starting point
-function createStart ($linkID) {
-  $startID = $_POST['startID'];
-  $sqlStart = "SELECT Latitude, Longitude
+function createStart ($linkID, &$jsonMessage) {
+  $startLat = $_POST['startLat'];
+  $startLon = $_POST['startLon'];
+  $sqlStart = "SELECT nodeID, Latitude, Longitude, SQRT(POW($startLat - Latitude, 2)+POW($startLon - Longitude, 2)) AS distance
                FROM Nodes
-               WHERE nodeID='$startID'";
+               ORDER BY distance ASC
+               LIMIT 1";
   $startNodeInfo = mysqli_query($linkID, $sqlStart);
   if (!$startNodeInfo) {
-    die("No such starting point found.<br>");
+    $jsonMessage["status"] = ["status"=>"400", "statusMessage"=>"No such starting point found."];
+    echo json_encode($jsonMessage);
+    exit;
   }
   $startNode = mysqli_fetch_assoc($startNodeInfo);
-  $start = new Node($startID, $startNode['Latitude'], $startNode['Longitude']);
+  extract($startNode);
+  $start = new Node($nodeID, $Latitude, $Longitude);
+  
+  $jsonMessage["debug"] = ["nodeDistance"=>"$distance"];
+  
   return $start;
 }
 
 // Creates a target node with the info given
-function createTarget ($linkID) {
-  // todo: to be replaced with room number and building
-  $targetID = $_POST['targetID'];
-  $sqlTarget = "SELECT Latitude, Longitude
+function createTarget ($linkID, &$jsonMessage) {
+  $building = $_POST['building'];
+  $room = $_POST['room'];
+  $sqlTarget = "SELECT nodeID, Latitude, Longitude
                 FROM Nodes
-                WHERE nodeID='$targetID'";
+                WHERE Location='$building' AND RoomNumber='$room'";
   $targetNodeInfo = mysqli_query($linkID, $sqlTarget);
   if (!$targetNodeInfo) {
-    die("No such destination found.<br>");
+    $jsonMessage["status"] = ["status'=>'400", "statusMessage"=>"No such destination found."];
+    echo json_encode($jsonMessage);
+    exit;
   }
   $targetNode = mysqli_fetch_assoc($targetNodeInfo);
   extract($targetNode);
-  $target = new Node($targetID, $targetNode['Latitude'], $targetNode['Longitude']);
+  $target = new Node($nodeID, $Latitude, $Longitude);
   return $target;
 }
 
@@ -258,21 +259,16 @@ $dbname = "FU_Navigate";
 
 $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
-  die("Connection failed: " . mysqli_connect_error() . "<br>");
+  $message = ["status"=>"500", "statusMessage"=>"Connection failed." . mysqli_error($linkID)];
+  echo json_encode($message);
+  exit;
 }
-$jsonConnected = ["status"=>"200", "statusMessage"=>"Connected successfully!"];
-echo json_encode($jsonConnected);
+$jsonMessage = array();
+$jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
 
-$start = createStart($linkID);
-$target = createTarget($linkID);
+$start = createStart($linkID, $jsonMessage);
+$target = createTarget($linkID, $jsonMessage);
 
-// An array of all the nodes
-$allNodes = array();
-$allNodes[$start->nodeID] = $start;
-$allNodes[$target->nodeID] = $target;
-
-AStarSearch ($start, $target, $linkID, $allNodes);
-printPath($target, $linkID);
-$jsonCost = ["cost"=>"$target->g"];
-echo json_encode($jsonCost);
+AStarSearch ($start, $target, $linkID);
+echo printPath($target, $linkID, $jsonMessage);
 mysqli_close($linkID);
