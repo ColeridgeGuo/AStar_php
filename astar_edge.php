@@ -22,4 +22,8 @@ class Edge {
     }
     return null;
   }
+  
+  function __toString() {
+    return "$endPointA->nodeID -- $endPointB->nodeID @$cost";
+  }
 }

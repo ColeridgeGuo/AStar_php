@@ -28,6 +28,52 @@ class Node {
 		}
 		return $this->h;
 	}
+	
+	function sqr($x)
+	{
+		return $x * $x;
+	}
+	
+	//NOT distance...since it doesn't take squareroot
+	function dist2(Node $p1, Node $p2) {
+		//return  endPointA^2 + endPointB^2
+		return $this->sqr($p1->latitude - $p2->latitude) + 
+			$this->sqr($p1->longitude - $p2->longitude);
+	}
+	
+	function distance2segment(Node $endPointA, Node $endPointB, &$projectedPointOnEdge = NULL) {
+		$line_distance = $this->dist2($endPointA,$endPointB);
+		
+		//if endPointA=endPointB, just do distance to the current node
+		if ($line_distance == 0) {
+			return $this->dist2($this,$endPointA);
+		}
+		
+		//projectedPercent within the line segment will be between 0-1
+		$projectedPercent = (($this->latitude - $endPointA->latitude)*($endPointB->latitude - $endPointA->latitude) + ($this->longitude - $endPointA->longitude)*($endPointB->longitude - $endPointA->longitude)) / $line_distance;
+		
+		if ($projectedPercent <= 0) {  
+			return sqrt($this->dist2($this,$endPointA));
+		}
+		
+		if ($projectedPercent >= 1) {
+			return sqrt($this->dist2($this,$endPointB));
+		}
+		
+		//the node projected ON that edge segment
+		$projectedPointX = $endPointA->latitude + $projectedPercent*($endPointB->latitude - $endPointA->latitude);
+		$projectedPointY = $endPointA->longitude + $projectedPercent * ($endPointB->longitude - $endPointA->longitude);
+		
+		$projectedPointOnEdge = new Node(null, $projectedPointX, $projectedPointY);
+				
+		return sqrt($this->dist2($this, $projectedPointOnEdge));
+	}
+	
+	// Returns the closest point to the current position on the edge
+	function closestPointOnEdge($minEdge, $currentPos) {
+		$endPointA = $minEdge->endPointA;
+		$endPointB = $minEdge->endPointB;
+	}
 
 	function toString () {
 		$result = "$this->nodeID ($this->latitude,$this->longitude)";
