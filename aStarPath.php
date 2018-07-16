@@ -58,7 +58,7 @@ function printPath (Node $target, $linkID, $jsonMessage) {
     }
     
     $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
-                      VALUES ($userID, $node->nodeID, $edgeID, $visited)";
+                      VALUES ('$userID', $node->nodeID, $edgeID, $visited)";
     if (!mysqli_query($linkID, $sqlInsertPath)) {
       $jsonMessage["status"] = ["status"=>"500", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
     }
