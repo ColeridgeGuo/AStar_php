@@ -328,7 +328,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
         "statusMessage"=>"Error inserting the attributes of the temp perp edge."];
   }
 
-  $jsonMessage["debug"] = ["nodeDistance"=>"$minDist"];
+  array_push($jsonMessage["debug"], ["nodeDistance"=>"$minDist"]);
   
   return $currentPos;
 }
@@ -339,7 +339,7 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
   $sqlTempNodes = "SELECT * FROM Nodes WHERE Temporary='$userID'";
   $tempNodes = mysqli_query($linkID, $sqlTempNodes);
   if (mysqli_num_rows($tempNodes) <= 0){
-    $jsonMessage["debug"] = ["message"=>"No temporary nodes found for user $userID."];
+    array_push($jsonMessage["debug"], ["message"=>"No temporary nodes found for user $userID."]);
   }
   else {
     $sqlClearTempNodes = "DELETE FROM Nodes WHERE Temporary='$userID'";
@@ -351,7 +351,7 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
   $sqlTempEdgeIDs = "SELECT edgeID FROM Edges WHERE tempID='$userID'";
   $tempEdgeIDs = mysqli_query($linkID, $sqlTempEdgeIDs);
   if (mysqli_num_rows($tempEdgeIDs) <= 0) {
-    $jsonMessage["debug"] = ["message"=>"No temporary edges found for user $userID."];
+    array_push($jsonMessage["debug"], ["message"=>"No temporary edges found for user $userID."]);
   } else {
     while($row = mysqli_fetch_assoc($tempEdgeIDs)){
       $edgeIDs[] = $row;
@@ -444,7 +444,7 @@ $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
   $message = ["status"=>"501", "statusMessage"=>"Connection failed." . mysqli_error($linkID)];
 }
-$jsonMessage = array();
+$jsonMessage = array("debug"=>array());
 $jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
 $userID = $_POST["userID"];
 
