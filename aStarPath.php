@@ -197,6 +197,15 @@ function buildAdjacencies (Node &$node, $linkID, $userID) {
   }
 }
 
+// Logs all the starting points into db
+function logStartingPoints($node, $linkID, &$jsonMessage, $userID) {
+  $sqlLogStartingPoint = "INSERT INTO StartingPointsLog (userID, Latitude, Longitude) 
+                          VALUES ('$userID', '$node->latitude', '$node->longitude')";
+  if (!mysqli_query($linkID, $sqlLogStartingPoint)) {
+    $jsonMessage["status"] = ["status"=>"515", "statusMessage"=>"Error logging starting point."];
+  }
+}
+
 // Creates a starting node with lat/long
 function createStart ($linkID, &$jsonMessage, $userID) {
   $startLat = $_POST['startLat'];
@@ -226,6 +235,11 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   $minEdge = null;
   $minDist = nearestEdge($currentPos, $linkID, $jsonMessage, $minEdge, $userID);
   //echo "Min Distance: $minDist, {$minEdge->endPointA->nodeID}-> {$minEdge->endPointB->nodeID}<br>";
+  
+  // log the starting point if it is too far
+  if ($minDist > 0.00001) {
+    logStartingPoints($currentPos, $linkID, $jsonMessage, $userID);
+  }
   
   // Add the closest point on edge to DB
   $closestPoint = null;
