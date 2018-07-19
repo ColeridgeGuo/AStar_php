@@ -63,11 +63,11 @@ function printPath (Node $target, $linkID, $jsonMessage) {
     
     // Convert path into an array of JSON string 
     if ($i > 0) {//exclude the starting point
-      $sqlNodeInfo = mysqli_query($linkID, "SELECT nodeID, Latitude, Longitude, Description
+      $sqlNodeInfo = mysqli_query($linkID, "SELECT nodeID, Latitude, Longitude
                                             FROM Nodes
                                             WHERE nodeID='$node->nodeID'");
       $nodeInfo = mysqli_fetch_assoc($sqlNodeInfo);
-      $sqlNodeAttributes = mysqli_query($linkID, "SELECT Location, NodeType, Door Swipe, OpenDirection, DoorLocation
+      $sqlNodeAttributes = mysqli_query($linkID, "SELECT Description, Location, NodeType, Door Swipe, OpenDirection, DoorLocation
                                                   FROM NodeAttributes
                                                   WHERE nodeID='$node->nodeID'");
       $nodeAttributes = mysqli_fetch_assoc($sqlNodeAttributes);
@@ -212,8 +212,8 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   $startLon = $_POST['startLon'];
   
   // Add the current position node to DB
-  $sqlCurrentPos = "INSERT INTO Nodes (Temporary, Description, Latitude, Longitude) 
-                      VALUES ('$userID', 'temp current position', '$startLat', '$startLon')";
+  $sqlCurrentPos = "INSERT INTO Nodes (Temporary, Latitude, Longitude) 
+                      VALUES ('$userID', '$startLat', '$startLon')";
   if (!mysqli_query($linkID, $sqlCurrentPos)) {
     $jsonMessage["status"] = ["status"=>"505",
         "statusMessage"=>"Error inserting the temp current position."];
@@ -246,8 +246,8 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   $x = $currentPos->distance2segment($minEdge->endPointA, $minEdge->endPointB, $closestPoint);
   //echo "closest point on edge: ($closestPoint->latitude, $closestPoint->longitude)<br>";
   
-  $sqlClosestPoint = "INSERT INTO Nodes (Temporary, Description, Latitude, Longitude) 
-                      VALUES ('$userID', 'temp closest point on edge', '$closestPoint->latitude', '$closestPoint->longitude')";
+  $sqlClosestPoint = "INSERT INTO Nodes (Temporary, Latitude, Longitude) 
+                      VALUES ('$userID', '$closestPoint->latitude', '$closestPoint->longitude')";
   if (!mysqli_query($linkID, $sqlClosestPoint)) {
     $jsonMessage["status"] = ["status"=>"506",
         "statusMessage"=>"Error inserting the temp closest point on edge."];
@@ -431,9 +431,11 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
 function createTarget ($linkID, &$jsonMessage) {
   $building = $_POST['building'];
   $room = $_POST['room'];
-  $sqlTarget = "SELECT nodeID, Latitude, Longitude
-                FROM Nodes
-                WHERE Location='$building' AND RoomNumber='$room'";
+  
+  $sqlTarget = "SELECT Nodes.nodeID, Nodes.Latitude, Nodes.Longitude
+                FROM Nodes, NodeAttributes
+                WHERE Nodes.nodeID = NodeAttributes.nodeID
+                AND Location='$building' AND RoomNumber='$room'";
   $targetNodeInfo = mysqli_query($linkID, $sqlTarget);
   if (!$targetNodeInfo) {
     $jsonMessage["status"] = ["status"=>"408", "statusMessage"=>"No such destination found."];
