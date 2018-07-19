@@ -7,7 +7,7 @@ require ('astar_edge.php');
 
 header('Content-type:application/json');
 
-// Removes the minimum valued (F) node from the array
+// Removes the minimum valued (f) node from the array
 function removeMin (array &$arr){
   $minNode = reset($arr);
   $minKey = $minNode->nodeID;
@@ -80,8 +80,7 @@ function printPath (Node $target, $linkID, $jsonMessage) {
                                                   WHERE edgeID = '$edgeID'");
       $edgeAttributes = mysqli_fetch_assoc($sqlEdgeAttributes);
       
-      $step = array("NodeInformation"=>$nodeInfo, 
-                    "EdgeInformation"=>$edgeAttributes);
+      $step = array("NodeInformation"=>$nodeInfo, "EdgeInformation"=>$edgeAttributes);
       array_push($jsonPath, $step);
     }
     $i++;
@@ -110,13 +109,10 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, $userID){
     $numEdges = sizeof($pq->adjacencies);
     //check every successor of pq
     for ($i = 0; $i < $numEdges; $i++){
-      //echo "$i: Node $pq->nodeID has edge.<br>";
-      
       $edge = $pq->adjacencies[$i];
       $successor = $edge->getOther($pq);
-      //echo "successor = $successor->nodeID.<br>";
       
-			// Calculate g, f
+			//calculate g, f
 			$temp_g = $pq->g + $edge->cost;
 			$temp_f = $temp_g + $successor->getH($goal);
 
@@ -125,14 +121,12 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, $userID){
 					$successor->parent = $pq;
 					$successor->g = $temp_g;
 					$successor->f = $temp_f;
-					//echo "New route to node $successor->nodeID is via node $pq->nodeID.<br>";
 				}
       }
       else if (!array_key_exists($successor->nodeID,$closedList)) {
         $successor->parent = $pq;
         $successor->g = $temp_g;
-        $successor->f = $temp_f;				
-        //echo "OpenList add node $successor->nodeID @ $successor->f.<br>";
+        $successor->f = $temp_f;
         $openList[$successor->nodeID] = $successor;
       }
 		}
@@ -142,6 +136,7 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, $userID){
 
 // For each edge that the node is attached to, build the adjacency array
 function buildAdjacencies (Node &$node, $linkID, $userID) {
+  
   // Select all the edges that have $node as nodeA
   $sqlA_Edges = "SELECT edgeID, NodeB, Cost
                  FROM Edges
@@ -151,7 +146,8 @@ function buildAdjacencies (Node &$node, $linkID, $userID) {
   
   if ($numA_Edges > 0) {
     for ($i=0; $i < $numA_Edges; $i++) {
-      // For each edge, get the info of the other endpoint
+      
+      //for each edge, get the info of the other endpoint
       $A_Edge = mysqli_fetch_assoc($A_Edges);
       extract($A_Edge);
       $sqlNodeB = "SELECT Latitude, Longitude
@@ -163,7 +159,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID) {
       
       $newNode = new Node($NodeB, $Latitude, $Longitude);
 
-      //Create an Edge and put it on the adjacencies of $node
+      //create an Edge and put it on the adjacencies of $node
       $newEdge = new Edge($node, $newNode, $Cost);
       array_push($node->adjacencies, $newEdge);
     }
@@ -178,7 +174,8 @@ function buildAdjacencies (Node &$node, $linkID, $userID) {
   
   if ($numB_Edges > 0) {
     for ($i=0; $i < $numB_Edges; $i++) {
-      // For each edge, get the info of the other endpoint
+      
+      //for each edge, get the info of the other endpoint
       $B_Edge = mysqli_fetch_assoc($B_Edges);
       extract($B_Edge);
       $sqlNodeA = "SELECT Latitude, Longitude
@@ -190,14 +187,14 @@ function buildAdjacencies (Node &$node, $linkID, $userID) {
       
       $newNode = new Node($NodeA, $Latitude, $Longitude);
 
-      //Create an Edge and put it on the adjacencies of $node
+      //create an Edge and put it on the adjacencies of $node
       $newEdge = new Edge($newNode, $node, $Cost);
       array_push($node->adjacencies, $newEdge);
     }
   }
 }
 
-// Logs all the starting points into db
+// Logs the starting point in db
 function logStartingPoints($node, $linkID, &$jsonMessage, $userID) {
   $sqlLogStartingPoint = "INSERT INTO StartingPointsLog (userID, Latitude, Longitude) 
                           VALUES ('$userID', '$node->latitude', '$node->longitude')";
@@ -206,12 +203,15 @@ function logStartingPoints($node, $linkID, &$jsonMessage, $userID) {
   }
 }
 
-// Creates a starting node with lat/long
+/** 
+ * With lat/lon given, using nearest edge algorithm to create a 
+ * starting point and a node on the nearest edge to start the a* algorithm
+ */
 function createStart ($linkID, &$jsonMessage, $userID) {
   $startLat = $_POST['startLat'];
   $startLon = $_POST['startLon'];
   
-  // Add the current position node to DB
+  //add the current position node to DB
   $sqlCurrentPos = "INSERT INTO Nodes (Temporary, Latitude, Longitude) 
                       VALUES ('$userID', '$startLat', '$startLon')";
   if (!mysqli_query($linkID, $sqlCurrentPos)) {
@@ -227,24 +227,21 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   }
   $currentPosID = mysqli_fetch_assoc($currentPosID);
   $currentPosID = $currentPosID["nodeID"];
-  //echo "current position nodeID: $currentPosID<br>";
   
   $currentPos = new Node($currentPosID, $startLat, $startLon);
   
-  // Minimum distance and closest edge
+  //find minimum distance and closest edge
   $minEdge = null;
   $minDist = nearestEdge($currentPos, $linkID, $jsonMessage, $minEdge, $userID);
-  //echo "Min Distance: $minDist, {$minEdge->endPointA->nodeID}-> {$minEdge->endPointB->nodeID}<br>";
   
-  // log the starting point if it is too far
+  //log the starting point if it is more than 10m away from an edge
   if ($minDist > 0.0001) {
     logStartingPoints($currentPos, $linkID, $jsonMessage, $userID);
   }
   
-  // Add the closest point on edge to DB
+  //add the closest point on edge to DB
   $closestPoint = null;
   $x = $currentPos->distance2segment($minEdge->endPointA, $minEdge->endPointB, $closestPoint);
-  //echo "closest point on edge: ($closestPoint->latitude, $closestPoint->longitude)<br>";
   
   $sqlClosestPoint = "INSERT INTO Nodes (Temporary, Latitude, Longitude) 
                       VALUES ('$userID', '$closestPoint->latitude', '$closestPoint->longitude')";
@@ -260,10 +257,10 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   }
   $closestPointID = mysqli_fetch_assoc($closestPointID);
   $closestPointID = $closestPointID["nodeID"];
-  //echo "closest point nodeID: $closestPointID<br>";
 
   // Add three temp edges to DB
-    // two sub-edges of the original edge  
+  
+  //add two sub-edges of the original edge  
   $dist1 = sqrt(pow($minEdge->endPointA->latitude - $closestPoint->latitude,2)
       + pow($minEdge->endPointA->longitude - $closestPoint->longitude,2));
   $dist2 = sqrt(pow($minEdge->endPointB->latitude - $closestPoint->latitude,2)
@@ -318,7 +315,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
       "statusMessage"=>"Error inserting the edge attributes of edge2."];
   }
   
-    // the edge from starting point to the node on edge
+  //add the perpendicular edge
   $sqlPerpEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
                   VALUES ('$userID', '$currentPosID', '$closestPointID', '$minDist')";
   if (!mysqli_query($linkID, $sqlPerpEdge)) {
@@ -349,24 +346,27 @@ function createStart ($linkID, &$jsonMessage, $userID) {
 
 // Clears any temporary nodes or edges in the database
 function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
-  // Clear temporary nodes
+  
+  //clear temporary nodes
   $sqlTempNodes = "SELECT * FROM Nodes WHERE Temporary='$userID'";
   $tempNodes = mysqli_query($linkID, $sqlTempNodes);
   if (mysqli_num_rows($tempNodes) <= 0){
     array_push($jsonMessage["debug"], ["message"=>"No temporary nodes found for user $userID."]);
   }
-  else {
+  else {//if temp nodes exist in db
     $sqlClearTempNodes = "DELETE FROM Nodes WHERE Temporary='$userID'";
     if (!mysqli_query($linkID, $sqlClearTempNodes)) {
       $jsonMessage["status"] = ["status"=>"502", "statusMessage"=>"Error deleting temp nodes."];
     }
   }
   
+  //clear temporary edges
   $sqlTempEdgeIDs = "SELECT edgeID FROM Edges WHERE tempID='$userID'";
   $tempEdgeIDs = mysqli_query($linkID, $sqlTempEdgeIDs);
   if (mysqli_num_rows($tempEdgeIDs) <= 0) {
     array_push($jsonMessage["debug"], ["message"=>"No temporary edges found for user $userID."]);
-  } else {
+  } 
+  else {
     while($row = mysqli_fetch_assoc($tempEdgeIDs)){
       $edgeIDs[] = $row;
     }
@@ -377,12 +377,11 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
     }
     $IDs = implode(",", $IDs);
     
-    // Clear temporary edges
     $sqlClearTempEdges = "DELETE FROM Edges WHERE tempID='$userID'";
     if (!mysqli_query($linkID, $sqlClearTempEdges)) {
       $jsonMessage["status"] = ["status"=>"503", "statusMessage"=>"Error deleting temp edges."];
     }
-    // Clear temporary edge attributes
+    //clear temporary edge attributes
     $sqlClearTempEdgeAttr = "DELETE FROM EdgeAttributes WHERE edgeID IN ($IDs)";
     if (!mysqli_query($linkID, $sqlClearTempEdgeAttr)) {
       $jsonMessage["status"] = ["status"=>"504", "statusMessage"=>"Error deleting temp edge attributes."];
@@ -390,7 +389,7 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
   }
 }
 
-// Finds the nearest edge to the node
+// Look at top 5 closest nodes, iterate thru their adjacencies and find the closest edge
 function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   $sqlTopNodes = "SELECT nodeID, Latitude, Longitude, 
                     SQRT(POW($p->latitude - Latitude, 2)+POW($p->longitude - Longitude, 2)) AS distance
@@ -406,13 +405,15 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   $totalRows = mysqli_num_rows($topNodes);
   $minDist = INF;
   
+  //for each of the top 5 closest nodes, build its adjacency matrix
   for ($i = 0; $i < $totalRows; $i++) {
     $topNode = mysqli_fetch_assoc($topNodes);
     extract($topNode);
     
     $endPoint = new Node($nodeID, $Latitude, $Longitude);
     buildAdjacencies($endPoint, $linkID, $userID);
-
+    
+    //for each edge connected to the node, calculate the distance from it to the current position
     foreach ($endPoint->adjacencies as $edge) {
       $otherEnd = $edge->getOther($endPoint);
       
@@ -427,7 +428,7 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   return $minDist;
 }
 
-// Creates a target node with the info given
+// Find the node with the given location and room number and returns it
 function createTarget ($linkID, &$jsonMessage) {
   $building = $_POST['building'];
   $room = $_POST['room'];
@@ -462,13 +463,13 @@ if (!$linkID) {
 }
 $jsonMessage = array("debug"=>array());
 $jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
-$userID = $_POST["userID"];
+$userID = $_POST["userID"]; 
 
-clearTempNodesNEdges($linkID, $userID, $jsonMessage);
+clearTempNodesNEdges($linkID, $userID, $jsonMessage);    // clear all temp nodes and edges
 
-$start = createStart($linkID, $jsonMessage, $userID);
-$target = createTarget($linkID, $jsonMessage);
+$start = createStart($linkID, $jsonMessage, $userID);    // create a starting point
+$target = createTarget($linkID, $jsonMessage);           // create a destination
 
-AStarSearch ($start, $target, $linkID, $userID);
-echo printPath($target, $linkID, $jsonMessage, $userID);
+AStarSearch ($start, $target, $linkID, $userID);         // run the astar to find shortest path
+echo printPath($target, $linkID, $jsonMessage, $userID); // print the path along with any additional info in JSON
 mysqli_close($linkID);
