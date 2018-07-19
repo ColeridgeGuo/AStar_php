@@ -237,7 +237,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   //echo "Min Distance: $minDist, {$minEdge->endPointA->nodeID}-> {$minEdge->endPointB->nodeID}<br>";
   
   // log the starting point if it is too far
-  if ($minDist > 0.00001) {
+  if ($minDist > 0.0001) {
     logStartingPoints($currentPos, $linkID, $jsonMessage, $userID);
   }
   
@@ -450,9 +450,9 @@ function createTarget ($linkID, &$jsonMessage) {
 
 // Connect to MySQl database and select db
 $servername = "localhost";
-$username = "mmallick";
-$password = "39ptcm!!x";
-$dbname = "FU_Navigate";
+$username = "yguo";
+$password = "Gyx199771";
+$dbname = "yguo";
 
 $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
