@@ -450,9 +450,9 @@ function createTarget ($linkID, &$jsonMessage) {
 
 // Connect to MySQl database and select db
 $servername = "localhost";
-$username = "yguo";
-$password = "Gyx199771";
-$dbname = "yguo";
+$username = "mmallick";
+$password = "39ptcm!!x";
+$dbname = "FU_Navigate";
 
 $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
