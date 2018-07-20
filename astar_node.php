@@ -1,4 +1,4 @@
-a<?php
+<?php
 //one node in the A* algorithm network
 class Node {
 	public $nodeID;
