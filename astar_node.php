@@ -1,4 +1,4 @@
-<?php
+a<?php
 //one node in the A* algorithm network
 class Node {
 	public $nodeID;
@@ -71,12 +71,6 @@ class Node {
 		$projectedPointOnEdge = new Node(null, $projectedPointX, $projectedPointY);
 				
 		return sqrt($this->dist2($this, $projectedPointOnEdge));
-	}
-	
-	// Returns the closest point to the current position on the edge
-	function closestPointOnEdge($minEdge, $currentPos) {
-		$endPointA = $minEdge->endPointA;
-		$endPointB = $minEdge->endPointB;
 	}
 
 	function toString () {
