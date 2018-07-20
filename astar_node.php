@@ -52,11 +52,15 @@ class Node {
 		//projectedPercent within the line segment will be between 0-1
 		$projectedPercent = (($this->latitude - $endPointA->latitude)*($endPointB->latitude - $endPointA->latitude) + ($this->longitude - $endPointA->longitude)*($endPointB->longitude - $endPointA->longitude)) / $line_distance;
 		
-		if ($projectedPercent <= 0) {  
+		//if the projection of the node lies outside of the edge on A side
+		if ($projectedPercent <= 0) {
+			$projectedPointOnEdge = new Node($endPointA->nodeID, $endPointA->latitude, $endPointA->longitude);
 			return sqrt($this->dist2($this,$endPointA));
 		}
 		
+		//if the projection of the node lies outside of the edge on B side
 		if ($projectedPercent >= 1) {
+			$projectedPointOnEdge = new Node($endPointB->nodeID, $endPointB->latitude, $endPointB->longitude);
 			return sqrt($this->dist2($this,$endPointB));
 		}
 		
