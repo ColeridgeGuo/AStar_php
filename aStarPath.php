@@ -35,7 +35,7 @@ function printPath (Node $target, $linkID, $jsonMessage) {
   $userID = $_POST["userID"];
   $sqlClearPath = "DELETE FROM Paths WHERE userID = '$userID'";
   if (!mysqli_query($linkID, $sqlClearPath)) {
-    $jsonMessage["status"] = ["status"=>"513", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
+    $jsonMessage["status"] = ["status"=>"518", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
   }
   
   $visited = 0;
@@ -57,7 +57,7 @@ function printPath (Node $target, $linkID, $jsonMessage) {
     $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
                       VALUES ('$userID', $node->nodeID, $edgeID, $visited)";
     if (!mysqli_query($linkID, $sqlInsertPath)) {
-      $jsonMessage["status"] = ["status"=>"514", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
+      $jsonMessage["status"] = ["status"=>"519", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
     }
     $prev = $node;
     
@@ -143,7 +143,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
                  WHERE nodeA='$node->nodeID' AND (tempID='$userID' OR tempID=-1)";
   $A_Edges = mysqli_query($linkID, $sqlA_Edges);
   if (!$A_Edges) {
-    $jsonMessage["status"] = ["status"=>"409", "statusMessage"=>"No edges found that have node as nodeA."];
+    $jsonMessage["status"] = ["status"=>"411", "statusMessage"=>"No edges found that have node as nodeA."];
   }
   $numA_Edges = mysqli_num_rows($A_Edges);
   
@@ -158,7 +158,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
                    WHERE nodeID='$NodeB' AND (Temporary='$userID' OR Temporary='')";
       $nodeBInfo = mysqli_query($linkID, $sqlNodeB);
       if (!$nodeBInfo) {
-        $jsonMessage["status"] = ["status"=>"410", "statusMessage"=>"No node info found for the other endpoint."];
+        $jsonMessage["status"] = ["status"=>"412", "statusMessage"=>"No node info found for the other endpoint."];
       }
       $nodeB = mysqli_fetch_assoc($nodeBInfo);
       extract($nodeB);
@@ -177,7 +177,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
                  WHERE nodeB='$node->nodeID' AND (tempID='$userID' OR tempID=-1)";
   $B_Edges = mysqli_query($linkID, $sqlB_Edges);
   if (!$B_Edges) {
-    $jsonMessage["status"] = ["status"=>"411", "statusMessage"=>"No edges found that have node as nodeB."];
+    $jsonMessage["status"] = ["status"=>"413", "statusMessage"=>"No edges found that have node as nodeB."];
   }
   $numB_Edges = mysqli_num_rows($B_Edges);
   
@@ -192,7 +192,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
                    WHERE nodeID='$NodeA' AND (Temporary='$userID' OR Temporary='')";
       $nodeAInfo = mysqli_query($linkID, $sqlNodeA);
       if (!$nodeAInfo) {
-        $jsonMessage["status"] = ["status"=>"412", "statusMessage"=>"No node info found for the other endpoint."];
+        $jsonMessage["status"] = ["status"=>"414", "statusMessage"=>"No node info found for the other endpoint."];
       }
       $nodeA = mysqli_fetch_assoc($nodeAInfo);
       extract($nodeA);
@@ -211,7 +211,7 @@ function logStartingPoints($node, $linkID, &$jsonMessage, $userID) {
   $sqlLogStartingPoint = "INSERT INTO StartingPointsLog (userID, Latitude, Longitude) 
                           VALUES ('$userID', '$node->latitude', '$node->longitude')";
   if (!mysqli_query($linkID, $sqlLogStartingPoint)) {
-    $jsonMessage["status"] = ["status"=>"515", "statusMessage"=>"Error logging starting point."];
+    $jsonMessage["status"] = ["status"=>"517", "statusMessage"=>"Error logging starting point."];
   }
 }
 
@@ -224,7 +224,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   $startLon = $_POST['startLon'];
   array_push($jsonMessage["debug"], ["Start"=>"($startLat, $startLon)"]);
   if ((!$startLat) OR (!$startLon)) {
-    $jsonMessage["status"] = ["status"=>"520","statusMessage"=>"starting lat lon empty."];
+    $jsonMessage["status"] = ["status"=>"401","statusMessage"=>"starting lat lon empty."];
   }
   
   //add the current position node to DB
@@ -273,7 +273,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
                                          FROM Edges 
                                          WHERE tempID='$userID' AND NodeA='$currentPosID' AND NodeB='$closestPoint->nodeID'");
     if (!$tempEdgeID) {
-      $jsonMessage["status"] = ["status"=>"407",
+      $jsonMessage["status"] = ["status"=>"403",
           "statusMessage"=>"Error getting the edgeID of the temp edge."];
     }
     $tempEdgeID = mysqli_fetch_assoc($tempEdgeID);
@@ -282,7 +282,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlTempEdgeAttr = "INSERT INTO EdgeAttributes (edgeID, Location)
                         VALUES ($tempEdgeID, 'Begin path.')";
     if (!mysqli_query($linkID, $sqlTempEdgeAttr)) {
-      $jsonMessage["status"] = ["status"=>"512",
+      $jsonMessage["status"] = ["status"=>"507",
           "statusMessage"=>"Error inserting the attributes of the temp edge."];
     }
   }
@@ -292,14 +292,14 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlInsertEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
                       VALUES ('$userID', '$currentPosID', '$closestPoint->nodeID', '$minDist')";
     if (!mysqli_query($linkID, $sqlInsertEdge)) {
-      $jsonMessage["status"] = ["status"=>"506",
+      $jsonMessage["status"] = ["status"=>"508",
         "statusMessage"=>"Error inserting the temp edge between the current position and endpoint B."];
     }
     $tempEdgeID = mysqli_query($linkID, "SELECT edgeID 
                                          FROM Edges 
                                          WHERE tempID='$userID' AND NodeA='$currentPosID' AND NodeB='$closestPoint->nodeID'");
     if (!$tempEdgeID) {
-      $jsonMessage["status"] = ["status"=>"407",
+      $jsonMessage["status"] = ["status"=>"404",
           "statusMessage"=>"Error getting the edgeID of the temp edge."];
     }
     $tempEdgeID = mysqli_fetch_assoc($tempEdgeID);
@@ -308,7 +308,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlTempEdgeAttr = "INSERT INTO EdgeAttributes (edgeID, Location)
                         VALUES ($tempEdgeID, 'Begin path.')";
     if (!mysqli_query($linkID, $sqlTempEdgeAttr)) {
-      $jsonMessage["status"] = ["status"=>"512",
+      $jsonMessage["status"] = ["status"=>"509",
           "statusMessage"=>"Error inserting the attributes of the temp edge."];
     }
   }
@@ -318,13 +318,13 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlClosestPoint = "INSERT INTO Nodes (Temporary, Latitude, Longitude) 
                         VALUES ('$userID', '$closestPoint->latitude', '$closestPoint->longitude')";
     if (!mysqli_query($linkID, $sqlClosestPoint)) {
-      $jsonMessage["status"] = ["status"=>"506",
+      $jsonMessage["status"] = ["status"=>"510",
           "statusMessage"=>"Error inserting the temp closest point on edge."];
     }
     $sqlClosestPointID = "SELECT nodeID FROM Nodes WHERE Latitude='$closestPoint->latitude' AND Longitude='$closestPoint->longitude'";
     $closestPointID = mysqli_query($linkID, $sqlClosestPointID);
     if (!$closestPointID) {
-      $jsonMessage["status"] = ["status"=>"404",
+      $jsonMessage["status"] = ["status"=>"405",
           "statusMessage"=>"Error getting the nodeID of the closest point on edge."];
     }
     $closestPointID = mysqli_fetch_assoc($closestPointID);
@@ -342,11 +342,11 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlEdge2 = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost)
                  VALUES ('$userID', '$closestPointID', '{$minEdge->endPointB->nodeID}', '$dist2')";
     if (!mysqli_query($linkID, $sqlEdge1)) {
-      $jsonMessage["status"] = ["status"=>"507",
+      $jsonMessage["status"] = ["status"=>"511",
           "statusMessage"=>"Error inserting the edge between one endpoint of the edge and the closest point on the edge."];
     }
     if (!mysqli_query($linkID, $sqlEdge2)) {
-      $jsonMessage["status"] = ["status"=>"508",
+      $jsonMessage["status"] = ["status"=>"512",
           "statusMessage"=>"Error inserting the edge between the other endpoint of the edge and the closest point on the edge."];
     }
   
@@ -355,11 +355,11 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $edge2ID = mysqli_query($linkID, "SELECT edgeID FROM Edges 
                   WHERE tempID='$userID' AND NodeA='$closestPointID' AND NodeB='{$minEdge->endPointB->nodeID}'");
     if (!$edge1ID) {
-      $jsonMessage["status"] = ["status"=>"405",
+      $jsonMessage["status"] = ["status"=>"406",
         "statusMessage"=>"Error getting the edgeID of the edge1."];
     }
     if (!$edge2ID) {
-      $jsonMessage["status"] = ["status"=>"406",
+      $jsonMessage["status"] = ["status"=>"407",
         "statusMessage"=>"Error getting the edgeID of the edge2."];
     }
     $edge1ID = mysqli_fetch_assoc($edge1ID);
@@ -378,11 +378,11 @@ function createStart ($linkID, &$jsonMessage, $userID) {
                                      WHERE (NodeA='{$minEdge->endPointA->nodeID}' AND NodeB='{$minEdge->endPointB->nodeID}') 
                                         OR (NodeA='{$minEdge->endPointB->nodeID}' AND NodeB='{$minEdge->endPointA->nodeID}'))";
     if(!mysqli_query($linkID, $sqlEdge1Attr)) {
-      $jsonMessage["status"] = ["status"=>"509",
+      $jsonMessage["status"] = ["status"=>"513",
         "statusMessage"=>"Error inserting the edge attributes of edge1."];
     }
     if(!mysqli_query($linkID, $sqlEdge2Attr)) {
-      $jsonMessage["status"] = ["status"=>"510",
+      $jsonMessage["status"] = ["status"=>"514",
         "statusMessage"=>"Error inserting the edge attributes of edge2."];
     }
     
@@ -390,14 +390,14 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlPerpEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
                     VALUES ('$userID', '$currentPosID', '$closestPointID', '$minDist')";
     if (!mysqli_query($linkID, $sqlPerpEdge)) {
-      $jsonMessage["status"] = ["status"=>"511",
+      $jsonMessage["status"] = ["status"=>"515",
           "statusMessage"=>"Error inserting the edge between the current position and the closest node on the edge."];
     }
     $perpEdgeID = mysqli_query($linkID, "SELECT edgeID 
                                          FROM Edges 
                                          WHERE tempID='$userID' AND NodeA='$currentPosID' AND NodeB='$closestPointID'");
     if (!$perpEdgeID) {
-      $jsonMessage["status"] = ["status"=>"407",
+      $jsonMessage["status"] = ["status"=>"408",
           "statusMessage"=>"Error getting the edgeID of the perp edge."];
     }
     $perpEdgeID = mysqli_fetch_assoc($perpEdgeID);
@@ -406,7 +406,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $sqlPerpEdgeAttr = "INSERT INTO EdgeAttributes (edgeID, Location)
                         VALUES ($perpEdgeID, 'Begin path.')";
     if (!mysqli_query($linkID, $sqlPerpEdgeAttr)) {
-      $jsonMessage["status"] = ["status"=>"512",
+      $jsonMessage["status"] = ["status"=>"516",
           "statusMessage"=>"Error inserting the attributes of the temp perp edge."];
     }
   }
@@ -471,7 +471,7 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
                   LIMIT 5";
   $topNodes = mysqli_query($linkID, $sqlTopNodes);
   if (!$topNodes) {
-    $jsonMessage["status"] = ["status"=>"403", "statusMessage"=>"No such nodes found."];
+    $jsonMessage["status"] = ["status"=>"415", "statusMessage"=>"No such nodes found."];
   }
   
   $totalRows = mysqli_num_rows($topNodes);
@@ -481,8 +481,6 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   for ($i = 0; $i < $totalRows; $i++) {
     $topNode = mysqli_fetch_assoc($topNodes);
     extract($topNode);
-    
-    //echo "Top $i closest node: $nodeID, $Latitude, $Longitude<br>";
     
     $endPoint = new Node($nodeID, $Latitude, $Longitude);
     buildAdjacencies($endPoint, $linkID, $userID, $jsonMessage);
@@ -508,7 +506,7 @@ function createTarget ($linkID, &$jsonMessage) {
   $room = $_POST['room'];
   array_push($jsonMessage["debug"], ["Destination"=>"$building $room"]);
   if ((!$building )OR (!$room)) {
-    $jsonMessage["status"] = ["status"=>"521","statusMessage"=>"destination building room number empty."];
+    $jsonMessage["status"] = ["status"=>"409","statusMessage"=>"destination building room number empty."];
   }
   
   $sqlTarget = "SELECT Nodes.nodeID, Nodes.Latitude, Nodes.Longitude
@@ -517,7 +515,7 @@ function createTarget ($linkID, &$jsonMessage) {
                 AND Location='$building' AND RoomNumber='$room'";
   $targetNodeInfo = mysqli_query($linkID, $sqlTarget);
   if (!$targetNodeInfo) {
-    $jsonMessage["status"] = ["status"=>"408", "statusMessage"=>"No such destination found."];
+    $jsonMessage["status"] = ["status"=>"410", "statusMessage"=>"No such destination found."];
   }
   $targetNode = mysqli_fetch_assoc($targetNodeInfo);
   extract($targetNode);
