@@ -63,13 +63,14 @@ function printPath (Node $target, $linkID, $jsonMessage) {
     
     // Convert path into an array of JSON string 
     if ($i > 0) {//exclude the starting point
-      $sqlNodeInfo = mysqli_query($linkID, "SELECT nodeID, Latitude, Longitude
+      $sqlNodeInfo = mysqli_query($linkID, "SELECT nodeID, I_E, Latitude, Longitude
                                             FROM Nodes
                                             WHERE nodeID='$node->nodeID'");
       $nodeInfo = mysqli_fetch_assoc($sqlNodeInfo);
-      $sqlNodeAttributes = mysqli_query($linkID, "SELECT Description, Location, NodeType, Door Swipe, OpenDirection, DoorLocation
-                                                  FROM NodeAttributes
-                                                  WHERE nodeID='$node->nodeID'");
+      $sqlNodeAttributes = mysqli_query($linkID, 
+          "SELECT NodeType, Location, RoomNumber, Floor, Description, DoorLocation, Swipe, OpenDirection
+           FROM NodeAttributes
+           WHERE nodeID='$node->nodeID'");
       $nodeAttributes = mysqli_fetch_assoc($sqlNodeAttributes);
       if (!$nodeAttributes == null) {
         $nodeInfo = array_merge($nodeInfo, $nodeAttributes);
