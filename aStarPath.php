@@ -22,7 +22,7 @@ function removeMin (array &$arr){
 }
 
 // Follow path from end, via parent's back to start
-function printPath (Node $target, $linkID, $jsonMessage) {
+function printPath (Node $target, $linkID, $jsonMessage, $userID) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
     array_push($path, $node);
@@ -32,13 +32,11 @@ function printPath (Node $target, $linkID, $jsonMessage) {
   $jsonPath = array();
   
   // Put the path in the Paths table in db and output JSON
-  $userID = $_POST["userID"];
   $sqlClearPath = "DELETE FROM Paths WHERE userID = '$userID'";
   if (!mysqli_query($linkID, $sqlClearPath)) {
     $jsonMessage["status"] = ["status"=>"518", "statusMessage"=>"Error deleting old paths:" . mysqli_error($linkID)];
   }
   
-  $visited = 0;
   $prev = null;
   $i = 0;
   
@@ -54,8 +52,8 @@ function printPath (Node $target, $linkID, $jsonMessage) {
       $edgeID = $edge['edgeID'];
     }
     
-    $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID, Visited)
-                      VALUES ('$userID', $node->nodeID, $edgeID, $visited)";
+    $sqlInsertPath = "INSERT INTO Paths (userID, nodeID, edgeID)
+                      VALUES ('$userID', $node->nodeID, $edgeID)";
     if (!mysqli_query($linkID, $sqlInsertPath)) {
       $jsonMessage["status"] = ["status"=>"519", "statusMessage"=>"Error inserting new paths: " . mysqli_error($linkID)];
     }
@@ -139,9 +137,10 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, $userID, &$jsonMessag
 function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
   
   // Select all the edges that have $node as nodeA
-  $sqlA_Edges = "SELECT edgeID, NodeB, Cost
-                 FROM Edges
-                 WHERE nodeA='$node->nodeID' AND (tempID='$userID' OR tempID=-1)";
+  $sqlA_Edges = "SELECT Edges.edgeID, NodeB, Cost, PathType, Obstacles
+                 FROM Edges, EdgeAttributes
+                 WHERE (Edges.edgeID=EdgeAttributes.edgeID) AND
+                       (nodeA='$node->nodeID' AND (tempID='$userID' OR tempID=-1))";
   $A_Edges = mysqli_query($linkID, $sqlA_Edges);
   if (!$A_Edges) {
     $jsonMessage["status"] = ["status"=>"411", "statusMessage"=>"No edges found that have node as nodeA."];
@@ -154,28 +153,32 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
       //for each edge, get the info of the other endpoint
       $A_Edge = mysqli_fetch_assoc($A_Edges);
       extract($A_Edge);
-      $sqlNodeB = "SELECT Latitude, Longitude
-                   FROM Nodes 
-                   WHERE nodeID='$NodeB' AND (Temporary='$userID' OR Temporary='')";
-      $nodeBInfo = mysqli_query($linkID, $sqlNodeB);
-      if (!$nodeBInfo) {
-        $jsonMessage["status"] = ["status"=>"412", "statusMessage"=>"No node info found for the other endpoint."];
-      }
-      $nodeB = mysqli_fetch_assoc($nodeBInfo);
-      extract($nodeB);
       
-      $newNode = new Node($NodeB, $Latitude, $Longitude);
-
-      //create an Edge and put it on the adjacencies of $node
-      $newEdge = new Edge($node, $newNode, $Cost);
-      array_push($node->adjacencies, $newEdge);
+      if ($PathType != "Exit only" || $Obstacles == "A to B") {
+        $sqlNodeB = "SELECT Latitude, Longitude
+                     FROM Nodes 
+                     WHERE nodeID='$NodeB' AND (Temporary='$userID' OR Temporary='')";
+        $nodeBInfo = mysqli_query($linkID, $sqlNodeB);
+        if (!$nodeBInfo) {
+          $jsonMessage["status"] = ["status"=>"412", "statusMessage"=>"No node info found for the other endpoint."];
+        }
+        $nodeB = mysqli_fetch_assoc($nodeBInfo);
+        extract($nodeB);
+        
+        $newNode = new Node($NodeB, $Latitude, $Longitude);
+        
+        //create an Edge and put it on the adjacencies of $node
+        $newEdge = new Edge($node, $newNode, $Cost);
+        array_push($node->adjacencies, $newEdge);
+      }
     }
   }
 
   // Select all the edges that have $node as nodeB
-  $sqlB_Edges = "SELECT edgeID, NodeA, Cost 
-                 FROM Edges 
-                 WHERE nodeB='$node->nodeID' AND (tempID='$userID' OR tempID=-1)";
+  $sqlB_Edges = "SELECT Edges.edgeID, NodeA, Cost, PathType, Obstacles
+                 FROM Edges, EdgeAttributes
+                 WHERE (Edges.edgeID=EdgeAttributes.edgeID) AND
+                       (nodeB='$node->nodeID' AND (tempID='$userID' OR tempID=-1))";
   $B_Edges = mysqli_query($linkID, $sqlB_Edges);
   if (!$B_Edges) {
     $jsonMessage["status"] = ["status"=>"413", "statusMessage"=>"No edges found that have node as nodeB."];
@@ -188,21 +191,24 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
       //for each edge, get the info of the other endpoint
       $B_Edge = mysqli_fetch_assoc($B_Edges);
       extract($B_Edge);
-      $sqlNodeA = "SELECT Latitude, Longitude
-                   FROM Nodes 
-                   WHERE nodeID='$NodeA' AND (Temporary='$userID' OR Temporary='')";
-      $nodeAInfo = mysqli_query($linkID, $sqlNodeA);
-      if (!$nodeAInfo) {
-        $jsonMessage["status"] = ["status"=>"414", "statusMessage"=>"No node info found for the other endpoint."];
-      }
-      $nodeA = mysqli_fetch_assoc($nodeAInfo);
-      extract($nodeA);
       
-      $newNode = new Node($NodeA, $Latitude, $Longitude);
-
-      //create an Edge and put it on the adjacencies of $node
-      $newEdge = new Edge($newNode, $node, $Cost);
-      array_push($node->adjacencies, $newEdge);
+      if ($PathType != "Exit only" || $Obstacles == "B to A") {
+        $sqlNodeA = "SELECT Latitude, Longitude
+                     FROM Nodes 
+                     WHERE nodeID='$NodeA' AND (Temporary='$userID' OR Temporary='')";
+        $nodeAInfo = mysqli_query($linkID, $sqlNodeA);
+        if (!$nodeAInfo) {
+          $jsonMessage["status"] = ["status"=>"414", "statusMessage"=>"No node info found for the other endpoint."];
+        }
+        $nodeA = mysqli_fetch_assoc($nodeAInfo);
+        extract($nodeA);
+        
+        $newNode = new Node($NodeA, $Latitude, $Longitude);
+        
+        //create an Edge and put it on the adjacencies of $node
+        $newEdge = new Edge($newNode, $node, $Cost);
+        array_push($node->adjacencies, $newEdge);
+      }
     }
   }
 }
@@ -465,11 +471,11 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
 // Look at top 5 closest nodes, iterate thru their adjacencies and find the closest edge
 function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   $sqlTopNodes = "SELECT nodeID, Latitude, Longitude, 
-                    SQRT(POW($p->latitude - Latitude, 2)+POW($p->longitude - Longitude, 2)) AS distance
-                  FROM Nodes
-                  WHERE Temporary=''
-                  ORDER BY distance ASC
-                  LIMIT 5";
+      SQRT(POW($p->latitude - Latitude, 2)+POW($p->longitude - Longitude, 2)) AS distance
+      FROM Nodes
+      WHERE Temporary=''
+      ORDER BY distance ASC
+      LIMIT 5";
   $topNodes = mysqli_query($linkID, $sqlTopNodes);
   if (!$topNodes) {
     $jsonMessage["status"] = ["status"=>"415", "statusMessage"=>"No such nodes found."];
@@ -482,6 +488,8 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   for ($i = 0; $i < $totalRows; $i++) {
     $topNode = mysqli_fetch_assoc($topNodes);
     extract($topNode);
+    
+    //echo "Top 5 nodes #$i: $nodeID - ($Latitude, $Longitude)<br>";
     
     $endPoint = new Node($nodeID, $Latitude, $Longitude);
     buildAdjacencies($endPoint, $linkID, $userID, $jsonMessage);
