@@ -469,7 +469,7 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
 }
 
 // Look at top 5 closest nodes, iterate thru their adjacencies and find the closest edge
-function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {;
+function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   $sqlTopNodes = "SELECT nodeID, Latitude, Longitude, 
       SQRT(POW($p->latitude - Latitude, 2)+POW($p->longitude - Longitude, 2)) AS distance
       FROM Nodes
