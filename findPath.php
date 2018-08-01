@@ -13,6 +13,10 @@
   Please enter the longitude of the starting point:
   <input type="text" name="startLon">
   <br>
+  Please enter whether you are inside or outside:
+  <input type="text" name="I_E">
+  ('I' for inside and 'E' for outside)
+  <br>
 
   Please enter the building name of the destination:
   <input type="text" name="building">
