@@ -229,6 +229,7 @@ function logStartingPoints($node, $linkID, &$jsonMessage, $userID) {
 function createStart ($linkID, &$jsonMessage, $userID) {
   $startLat = $_POST['startLat'];
   $startLon = $_POST['startLon'];
+  
   array_push($jsonMessage["debug"], ["Start"=>"($startLat, $startLon)"]);
   if ((!$startLat) OR (!$startLon)) {
     $jsonMessage["status"] = ["status"=>"401","statusMessage"=>"starting lat lon empty."];
@@ -470,15 +471,21 @@ function clearTempNodesNEdges($linkID, $userID, &$jsonMessage) {
 
 // Look at top 5 closest nodes, iterate thru their adjacencies and find the closest edge
 function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
+  $I_E = $_POST['I_E'];
+  if ($I_E != "E" && $I_E != "I") { //default is outside
+    $jsonMessage["status"] = ["status"=>"415", "statusMessage"=>"Wrong inside/outside input: has to be either \"I\" or \"E\""];
+    $I_E = "E";
+  }
+  
   $sqlTopNodes = "SELECT nodeID, Latitude, Longitude, 
       SQRT(POW($p->latitude - Latitude, 2)+POW($p->longitude - Longitude, 2)) AS distance
       FROM Nodes
-      WHERE Temporary=''
+      WHERE Temporary='' AND I_E='$I_E'
       ORDER BY distance ASC
       LIMIT 5";
   $topNodes = mysqli_query($linkID, $sqlTopNodes);
   if (!$topNodes) {
-    $jsonMessage["status"] = ["status"=>"415", "statusMessage"=>"No such nodes found."];
+    $jsonMessage["status"] = ["status"=>"416", "statusMessage"=>"No such nodes found."];
   }
   
   $totalRows = mysqli_num_rows($topNodes);
@@ -488,8 +495,6 @@ function nearestEdge(&$p, $linkID, &$jsonMessage, &$minEdge, $userID) {
   for ($i = 0; $i < $totalRows; $i++) {
     $topNode = mysqli_fetch_assoc($topNodes);
     extract($topNode);
-    
-    //echo "Top 5 nodes #$i: $nodeID - ($Latitude, $Longitude)<br>";
     
     $endPoint = new Node($nodeID, $Latitude, $Longitude);
     buildAdjacencies($endPoint, $linkID, $userID, $jsonMessage);
