@@ -22,7 +22,7 @@ function removeMin (array &$arr){
 }
 
 // Follow path from end, via parent's back to start
-function printPath (Node $target, $linkID, $jsonMessage, $userID) {
+function printPath (Node $target, $linkID, &$jsonMessage, $userID) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
     array_push($path, $node);
@@ -85,7 +85,7 @@ function printPath (Node $target, $linkID, $jsonMessage, $userID) {
     $i++;
   }
   $jsonMessage["path"] = $jsonPath;
-  return json_encode($jsonMessage);
+  //return json_encode($jsonMessage);
 }
 
 // Main implementation of the pathfinding algorithm
@@ -561,5 +561,8 @@ $start = createStart($linkID, $jsonMessage, $userID);    // create a starting po
 $target = createTarget($linkID, $jsonMessage);           // create a destination
 
 AStarSearch ($start, $target, $linkID, $userID, $jsonMessage); // run the astar to find shortest path
-echo printPath($target, $linkID, $jsonMessage, $userID); // print the path along with any additional info in JSON
+printPath($target, $linkID, $jsonMessage, $userID); // put the path into jsonMessage
+$time = microtime(true) - $_SERVER["REQUEST_TIME_FLOAT"]; // total execution time of aStarPath.php
+array_push($jsonMessage["debug"], ["Total execution time"=>"$time"]);
+echo json_encode($jsonMessage);
 mysqli_close($linkID);
