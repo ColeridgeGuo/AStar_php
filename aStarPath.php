@@ -541,7 +541,7 @@ function createTarget ($linkID, &$jsonMessage) {
 //////////////////// INITIALIZATION ///////////////////////
 ///////////////////////////////////////////////////////////
 
-// Connect to MySQl database and select db
+// Connect to MySQL database and select db
 $servername = "localhost";
 $username = "yguo";
 $password = "Gyx199771";
