@@ -35,13 +35,13 @@ class Node {
 	}
 	
 	//NOT distance...since it doesn't take squareroot
-	function dist2(Node $p1, Node $p2) {
+	function dist2($p1, $p2) {
 		//return  endPointA^2 + endPointB^2
 		return $this->sqr($p1->latitude - $p2->latitude) + 
 			$this->sqr($p1->longitude - $p2->longitude);
 	}
 	
-	function distance2segment(Node $endPointA, Node $endPointB, &$projectedPointOnEdge = NULL) {
+	function distance2segment($endPointA, $endPointB, &$projectedPointOnEdge = NULL) {
 		$line_distance = $this->dist2($endPointA,$endPointB);
 		
 		//if endPointA=endPointB, just do distance to the current node

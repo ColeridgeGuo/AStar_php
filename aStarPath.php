@@ -2,13 +2,14 @@
 // Implementation of A* pathfinding algorithm
 // Summer 2018
 
-require ('astar_node.php');
-require ('astar_edge.php');
+require_once ('astar_node.php');
+require_once ('astar_edge.php');
+require_once dirname(__DIR__) . '/updateEdgeCost.php';
 
 header('Content-type:application/json');
 
 // Removes the minimum valued (f) node from the array
-function removeMin (array &$arr){
+function removeMin (&$arr){
   $minNode = reset($arr);
   $minKey = $minNode->nodeID;
   foreach ($arr as $nodeID => $node) {
@@ -22,7 +23,7 @@ function removeMin (array &$arr){
 }
 
 // Follow path from end, via parent's back to start
-function printPath (Node $target, $linkID, &$jsonMessage, $userID) {
+function printPath ($target, $linkID, &$jsonMessage, $userID) {
   $path = array();
   for ($node = $target; $node != null; $node = $node->parent) {
     array_push($path, $node);
@@ -89,7 +90,7 @@ function printPath (Node $target, $linkID, &$jsonMessage, $userID) {
 }
 
 // Main implementation of the pathfinding algorithm
-function AStarSearch (Node &$source, Node &$goal, $linkID, $userID, &$jsonMessage){
+function AStarSearch (&$source, &$goal, $linkID, $userID, &$jsonMessage){
 	$closedList = array();  //list of nodes visited
 	$openList = array();    //list of unresolved (open) nodes
 
@@ -134,10 +135,10 @@ function AStarSearch (Node &$source, Node &$goal, $linkID, $userID, &$jsonMessag
 }
 
 // For each edge that the node is attached to, build the adjacency array
-function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
+function buildAdjacencies (&$node, $linkID, $userID, &$jsonMessage) {
   
   // Select all the edges that have $node as nodeA
-  $sqlA_Edges = "SELECT Edges.edgeID, NodeB, Cost, PathType, Obstacles
+  $sqlA_Edges = "SELECT Edges.edgeID, NodeB, ExtraCost, Distance, PathType, Obstacles
                  FROM Edges, EdgeAttributes
                  WHERE (Edges.edgeID=EdgeAttributes.edgeID) AND
                        (nodeA='$node->nodeID' AND (tempID='$userID' OR tempID=-1))";
@@ -168,14 +169,14 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
         $newNode = new Node($NodeB, $Latitude, $Longitude);
         
         //create an Edge and put it on the adjacencies of $node
-        $newEdge = new Edge($node, $newNode, $Cost);
+        $newEdge = new Edge($node, $newNode, $ExtraCost+$Distance);
         array_push($node->adjacencies, $newEdge);
       }
     }
   }
 
   // Select all the edges that have $node as nodeB
-  $sqlB_Edges = "SELECT Edges.edgeID, NodeA, Cost, PathType, Obstacles
+  $sqlB_Edges = "SELECT Edges.edgeID, NodeA, ExtraCost, Distance, PathType, Obstacles
                  FROM Edges, EdgeAttributes
                  WHERE (Edges.edgeID=EdgeAttributes.edgeID) AND
                        (nodeB='$node->nodeID' AND (tempID='$userID' OR tempID=-1))";
@@ -206,7 +207,7 @@ function buildAdjacencies (Node &$node, $linkID, $userID, &$jsonMessage) {
         $newNode = new Node($NodeA, $Latitude, $Longitude);
         
         //create an Edge and put it on the adjacencies of $node
-        $newEdge = new Edge($newNode, $node, $Cost);
+        $newEdge = new Edge($newNode, $node, $ExtraCost+$Distance);
         array_push($node->adjacencies, $newEdge);
       }
     }
@@ -271,7 +272,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   //if closest point is endpoint A, add the edge in between to DB
   if ($closestPoint->nodeID == $minEdge->endPointA->nodeID) {
     
-    $sqlInsertEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
+    $sqlInsertEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Distance) 
                       VALUES ('$userID', '$currentPosID', '$closestPoint->nodeID', '$minDist')";
     if (!mysqli_query($linkID, $sqlInsertEdge)) {
       $jsonMessage["status"] = ["status"=>"506",
@@ -297,7 +298,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
   //if closest point is endpoint B, add the edge in between to DB
   else if ($closestPoint->nodeID == $minEdge->endPointB->nodeID) {
     
-    $sqlInsertEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
+    $sqlInsertEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Distance) 
                       VALUES ('$userID', '$currentPosID', '$closestPoint->nodeID', '$minDist')";
     if (!mysqli_query($linkID, $sqlInsertEdge)) {
       $jsonMessage["status"] = ["status"=>"508",
@@ -345,9 +346,9 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     $dist2 = sqrt(pow($minEdge->endPointB->latitude - $closestPoint->latitude,2)
         + pow($minEdge->endPointB->longitude - $closestPoint->longitude,2));
       
-    $sqlEdge1 = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost)
+    $sqlEdge1 = "INSERT INTO Edges (tempID, NodeA, NodeB, Distance)
                  VALUES ('$userID', '$closestPointID', '{$minEdge->endPointA->nodeID}', '$dist1')";
-    $sqlEdge2 = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost)
+    $sqlEdge2 = "INSERT INTO Edges (tempID, NodeA, NodeB, Distance)
                  VALUES ('$userID', '$closestPointID', '{$minEdge->endPointB->nodeID}', '$dist2')";
     if (!mysqli_query($linkID, $sqlEdge1)) {
       $jsonMessage["status"] = ["status"=>"511",
@@ -395,7 +396,7 @@ function createStart ($linkID, &$jsonMessage, $userID) {
     }
     
     //add the perpendicular edge
-    $sqlPerpEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Cost) 
+    $sqlPerpEdge = "INSERT INTO Edges (tempID, NodeA, NodeB, Distance) 
                     VALUES ('$userID', '$currentPosID', '$closestPointID', '$minDist')";
     if (!mysqli_query($linkID, $sqlPerpEdge)) {
       $jsonMessage["status"] = ["status"=>"515",
@@ -555,6 +556,7 @@ $jsonMessage = array("debug"=>array());
 $jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
 $userID = $_POST["userID"]; 
 
+updateEdgeCost($linkID, $jsonMessage);                                 // updates all the edge costs
 clearTempNodesNEdges($linkID, $userID, $jsonMessage);    // clear all temp nodes and edges
 
 $start = createStart($linkID, $jsonMessage, $userID);    // create a starting point
@@ -562,7 +564,9 @@ $target = createTarget($linkID, $jsonMessage);           // create a destination
 
 AStarSearch ($start, $target, $linkID, $userID, $jsonMessage); // run the astar to find shortest path
 printPath($target, $linkID, $jsonMessage, $userID); // put the path into jsonMessage
+
 $time = microtime(true) - $_SERVER["REQUEST_TIME_FLOAT"]; // total execution time of aStarPath.php
 array_push($jsonMessage["debug"], ["Total execution time"=>"$time"]);
+
 echo json_encode($jsonMessage);
 mysqli_close($linkID);
