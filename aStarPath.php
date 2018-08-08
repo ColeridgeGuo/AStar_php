@@ -4,7 +4,6 @@
 
 require_once ('astar_node.php');
 require_once ('astar_edge.php');
-require_once dirname(__DIR__) . '/updateEdgeCost.php';
 
 header('Content-type:application/json');
 
@@ -556,7 +555,6 @@ $jsonMessage = array("debug"=>array());
 $jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
 $userID = $_POST["userID"]; 
 
-updateEdgeCost($linkID, $jsonMessage);                                 // updates all the edge costs
 clearTempNodesNEdges($linkID, $userID, $jsonMessage);    // clear all temp nodes and edges
 
 $start = createStart($linkID, $jsonMessage, $userID);    // create a starting point
