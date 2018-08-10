@@ -549,7 +549,7 @@ $dbname = "yguo";
 
 $linkID = mysqli_connect($servername, $username, $password, $dbname);
 if (!$linkID) {
-  $message = ["status"=>"501", "statusMessage"=>"Connection failed." . mysqli_error($linkID)];
+  $message = ["status"=>"501", "statusMessage"=>"Connection failed. " . mysqli_error($linkID)];
 }
 $jsonMessage = array("debug"=>array());
 $jsonMessage["status"] = ["status"=>"200", "statusMessage"=>"Success!"];
